@@ -294,7 +294,6 @@ int main(int argc, char **argv)
             }
             else
             {
-
               /* a complete message is received, print it out */
               printf("Received the number \"%d\". Client IP address is: %s\n",
                      num, inet_ntoa(current->client_addr.sin_addr));
