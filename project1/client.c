@@ -1,9 +1,5 @@
-//
-// Created by 陈镜泽 on 2023/1/31.
-//
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <unistd.h>
 #include <string.h>
 #include <sys/types.h>
@@ -11,29 +7,62 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-
+#include <sys/time.h>
+#include <endian.h>
+struct message
+{
+    unsigned short size;
+    // struct timeval time;
+    long sec;
+    long usec;
+    char data[65535];
+};
+void updatetime(struct message *message)
+{
+    struct timeval *time = (struct timeval *)malloc(sizeof(struct timeval));
+    gettimeofday(time, NULL);
+    message->sec = (long)time->tv_sec;
+    message->usec = (long)time->tv_usec;
+    free(time);
+}
 int main(int argc, char **argv)
 {
-    int mySock;
-    unsigned int serverAdd;
-    struct sockaddr_in serin;
-    struct addrinfo *getServer, hints;
+
+    /* our client socket */
+    int sock;
+
+    /* variables for identifying the server */
+    unsigned int server_addr;
+    struct sockaddr_in sin;
+    struct addrinfo *getaddrinfo_result, hints;
 
     memset(&hints, 0, sizeof(struct addrinfo));
     hints.ai_family = AF_INET; /* indicates we want IPv4 */
-    if (getaddrinfo(argv[1], NULL, &hints, &getServer) == 0)
+
+    if (getaddrinfo(argv[1], NULL, &hints, &getaddrinfo_result) == 0)
     {
-        serverAdd = (unsigned int)((struct sockaddr_in *)(getServer->ai_addr))->sin_addr.s_addr;
-        freeaddrinfo(getServer);
+        server_addr = (unsigned int)((struct sockaddr_in *)(getaddrinfo_result->ai_addr))->sin_addr.s_addr;
+        freeaddrinfo(getaddrinfo_result);
     }
 
+    /* server port number */
     unsigned short server_port = atoi(argv[2]);
-    char *buffer, *sendbuffer;
+    char *receivebuffer, *sendbuffer;
     short size = atoi(argv[3]);
-    int count, iteration = atoi(argv[4]);
+    int iteration = atoi(argv[4]);
+    if (size < 18 || size > 65535)
+    {
+        perror("invalid size");
+        abort();
+    }
+    if (iteration < 0 || iteration > 10000)
+    {
+        perror("invalid number of message exchange");
+        abort();
+    }
 
-    buffer = (char *)malloc(size);
-    if (!buffer)
+    receivebuffer = (char *)malloc(size);
+    if (!receivebuffer)
     {
         perror("failed to allocated buffer");
         abort();
@@ -46,68 +75,69 @@ int main(int argc, char **argv)
         abort();
     }
 
-    if ((mySock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
+    /* create a socket */
+    if ((sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
     {
         perror("opening TCP socket");
         abort();
     }
 
     /* fill in the server's address */
-    memset(&serin, 0, sizeof(serin));
-    serin.sin_family = AF_INET;
-    serin.sin_addr.s_addr = serverAdd;
-    serin.sin_port = htons(server_port);
+    memset(&sin, 0, sizeof(sin));
+    sin.sin_family = AF_INET;
+    sin.sin_addr.s_addr = server_addr;
+    sin.sin_port = htons(server_port);
 
-    if (connect(mySock, (struct sockaddr *)&serin, sizeof(serin)) < 0)
+    if (connect(sock, (struct sockaddr *)&sin, sizeof(sin)) < 0)
     {
         perror("connect to server failed");
         abort();
     }
 
-    count = recv(mySock, buffer, 50, 0);
-    if (count < 0)
+    // create ping message
+    // message->data:
+    char *ping_data = malloc(size - 18);
+    memset(ping_data, '0', size - 18);
+    struct message Send, Receive;
+    Send.size = (unsigned short)(strlen(ping_data) + 18 > 65535 ? 65535 : strlen(ping_data) + 18);
+    printf("Size is:%d.\n",Send.size);
+    updatetime(&Send);
+    memcpy(Send.data, ping_data, Send.size - 18);
+    int epoch = 0;
+    while (epoch < iteration)
     {
-        perror("receive failure");
-        abort();
+        updatetime(&Send);
+        // generate message
+        *(unsigned short *)sendbuffer = (unsigned short)htobe16(Send.size); // size(2 bytes)
+        *(long *)(sendbuffer + 2) = (long)htobe64(Send.sec);                // tv_sec(8 bytes)
+        *(long *)(sendbuffer + 10) = (long)htobe64(Send.usec);              // tv_usec(8 bytes)
+        memcpy(sendbuffer + 18, Send.data, Send.size - 18);                 // data
+        int send_cnt_thistime = send(sock, sendbuffer, size, 0);
+        while (send_cnt_thistime < size)
+        {
+            int send_cnt_nexttime = send(sock, sendbuffer + send_cnt_thistime, size - send_cnt_thistime, 0);
+            send_cnt_thistime += send_cnt_nexttime;
+        }
+        int receive_cnt_thistime = recv(sock, receivebuffer, size, 0);
+        while (receive_cnt_thistime < size)
+        {
+            int receive_cnt_nexttime = recv(sock, receivebuffer + receive_cnt_thistime, size - receive_cnt_thistime, 0);
+            receive_cnt_thistime += receive_cnt_nexttime;
+        }
+        Receive.size = (unsigned short)be16toh(*(unsigned short *)receivebuffer);
+        Receive.sec = (long)be64toh(*(long *)(receivebuffer + 2));
+        Receive.usec = (long)be64toh(*(long *)(receivebuffer + 10));
+        memcpy(Receive.data, receivebuffer + 18, Receive.size - 18);
+        struct timeval *current_time = (struct timeval *)malloc(sizeof(struct timeval));
+        gettimeofday(current_time, NULL);
+        float latency = (current_time->tv_sec - Receive.sec) * 1000.000 + (current_time->tv_usec - Receive.usec) / 1000.000;
+        printf("====================================================================\n");
+        printf("Epoch %d:\n", epoch);
+        printf("Latency is %.3f millisecond.\n", latency);
+        epoch += 1;
     }
-
-    if (buffer[count - 1] != 0)
-    {
-        /* In general, TCP recv can return any number of bytes, not
-       necessarily forming a complete message, so you need to
-       parse the input to see if a complete message has been received.
-           if not, more calls to recv is needed to get a complete message.
-        */
-        printf("Message incomplete, something is still being transmitted\n");
-    }
-    else
-    {
-        printf("Here is what we got: %s", buffer);
-    }
-
-    *(short *)(buffer) = size;
-
-    // printf("size is: %d\n",*(short *)(buffer));
-
-    struct timeval time, recvTime;
-    long *locator = buffer + 2;
-    long interval;
-
-    while (iteration > 0)
-    {
-        gettimeofday(&time, NULL);
-        *(long *)locator = time.tv_sec;
-        *(long *)(locator + 1) = time.tv_usec;
-        //printf("time %ld       %ld\n", time.tv_sec, time.tv_usec);
-      // printf("send %d   %ld      %ld\n", *(short *)(buffer), *(long *)(locator), *(long *)(locator + 1));
-        send(mySock, buffer, size, 0);
-        count = recv(mySock, buffer, size, 0);
-        gettimeofday(&recvTime, NULL);
-        interval = (recvTime.tv_usec - time.tv_usec);
-       // printf("recieve %d   %ld      %ld\n", *(short *)(buffer), *(long *)(locator), *(long *)(locator + 1));
-        printf("trip time in milsec is: %ld \n", interval);
-
-        iteration--;
-    }
+    free(ping_data);
+    free(receivebuffer);
+    free(sendbuffer);
     return 0;
 }

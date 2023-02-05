@@ -8,7 +8,9 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
-
+#include <sys/select.h>
+#include <sys/time.h>
+#include <endian.h>
 /**************************************************/
 /* a few simple linked list functions             */
 /**************************************************/
@@ -64,6 +66,22 @@ void add(struct node *head, int socket, struct sockaddr_in addr)
   head->next = new_node;
 }
 
+struct message
+{
+  unsigned short size;
+  // struct timeval time;
+  long sec;
+  long usec;
+  char data[65535];
+};
+void updatetime(struct message *message)
+{
+  struct timeval *time = (struct timeval *)malloc(sizeof(struct timeval));
+  gettimeofday(time, NULL);
+  message->sec = (long)time->tv_sec;
+  message->usec = (long)time->tv_usec;
+  free(time);
+}
 /*****************************************/
 /* main program                          */
 /*****************************************/
@@ -79,7 +97,11 @@ int main(int argc, char **argv)
   /* server socket address variables */
   struct sockaddr_in sin, addr;
   unsigned short server_port = atoi(argv[1]);
-
+  if (server_port < 18000 || server_port > 18200)
+  {
+    perror("Invalid server port");
+    abort();
+  }
   /* socket address variables for a connected client */
   socklen_t addr_len = sizeof(struct sockaddr_in);
 
@@ -92,7 +114,8 @@ int main(int argc, char **argv)
   int select_retval;
 
   /* a silly message */
-  char *message = "Welcome! COMP/ELEC 556 Students!\n";
+  // char *message = "Welcome! COMP/ELEC 556 Students!\n";
+  struct message Receive;
 
   /* number of bytes sent/received */
   int count;
@@ -105,11 +128,12 @@ int main(int argc, char **argv)
   struct node *current, *next;
 
   /* a buffer to read data */
-  char *buf;
-  int BUF_LEN = 29000;
+  char *receivebuffer;
+  char *sendbuffer;
+  int BUF_LEN = 65535;
 
-  buf = (char *)malloc(BUF_LEN);
-
+  receivebuffer = (char *)malloc(BUF_LEN);
+  sendbuffer = (char *)malloc(BUF_LEN);
   /* initialize dummy head node of linked list */
   head.socket = -1;
   head.next = 0;
@@ -230,14 +254,6 @@ int main(int argc, char **argv)
 
         /* remember this client connection in our linked list */
         add(&head, new_sock, addr);
-
-        /* let's send a message to the client just for fun */
-        count = send(new_sock, message, strlen(message) + 1, 0);
-        if (count < 0)
-        {
-          perror("error sending message to client");
-          abort();
-        }
       }
 
       /* check other connected sockets, see if there is
@@ -246,15 +262,13 @@ int main(int argc, char **argv)
       for (current = head.next; current; current = next)
       {
         next = current->next;
-
         /* see if we can now do some previously unsuccessful writes */
-
         if (FD_ISSET(current->socket, &read_set))
         {
           /* we have data from a client */
-          printf("here we are \n");
-          count = recv(current->socket, buf, BUF_LEN, 0);
-          printf("size is: %d  %d\n", *(short *)buf, count);
+          printf("====================================================================\n");
+          count = recv(current->socket, receivebuffer, BUF_LEN, 0);
+          int temp = 0;
           if (count <= 0)
           {
             /* something is wrong */
@@ -273,50 +287,35 @@ int main(int argc, char **argv)
           }
           else
           {
-            printf("size is: %d  %d\n", *(short *)buf, count);
-            /* we got count bytes of data from the client */
-            /* in general, the amount of data received in a recv()
-               call may not be a complete application message. it
-               is important to check the data received against
-               the message format you expect. if only a part of a
-               message has been received, you must wait and
-               receive the rest later when more data is available
-               to be read */
-            /* in this case, we expect a message where the first byte
-                           stores the number of bytes used to encode a number,
-                           followed by that many bytes holding a numeric value */
-            if (*(short *)buf != count)
+            // First, we have to get the size and the time to determine the size of this message,
+            // then we know when the message will end.
+            while (count < 18)
             {
-              /* we got only a part of a message, we won't handle this in
-                 this simple example */
-              printf("Message incomplete, something is still being transmitted\n");
-              return 0;
+              temp = recv(current->socket, receivebuffer + count, BUF_LEN - count, 0);
+              count += temp;
             }
-            else
+            Receive.size = (unsigned short)be16toh(*(unsigned short *)receivebuffer);
+            printf("Size is %d.\n",Receive.size);
+            Receive.sec = (__time_t)be64toh(*(__time_t *)(receivebuffer + 2));
+            Receive.usec = (__suseconds_t)be64toh(*(__suseconds_t *)(receivebuffer + 10));
+            memcpy(Receive.data, receivebuffer + 18, Receive.size - 18);
+
+            while (Receive.size != count)
             {
-              /* a complete message is received, print it out */
-              printf("Received the number \"%d\". Client IP address is: %s\n",
-                     num, inet_ntoa(current->client_addr.sin_addr));
-        
-              count = send(current->socket, buf, *(short *)buf, MSG_DONTWAIT);
-           
-             
-              if (count < 0)
-              {
-                if (errno == EAGAIN)
-                {
-                  /* we are trying to dump too much data down the socket,
-                     it cannot take more for the time being
-                     will have to go back to select and wait til select
-                     tells us the socket is ready for writing
-                  */
-                }
-                else
-                {
-                  /* something else is wrong */
-                  printf("something wrong with the meassage sending\n");
-                }
-              }
+              temp = recv(current->socket, receivebuffer + count, BUF_LEN - count, 0);
+              count += temp;
+            }
+            /*Receive the whole message*/
+            printf("Received ping message from %s\n", inet_ntoa(current->client_addr.sin_addr));
+            //printf("size is: %d  %d\n", (unsigned short)be16toh(*(unsigned short *)receivebuffer), count);
+            *(unsigned short *)sendbuffer = (unsigned short)htobe16(Receive.size);
+            *(long *)(sendbuffer + 2) = (long)htobe64(Receive.sec);
+            *(long *)(sendbuffer + 10) = (long)htobe64(Receive.usec);
+            memcpy(sendbuffer + 18, Receive.data, Receive.size - 18);
+            while (count != 0)
+            {
+              temp = send(current->socket, sendbuffer + Receive.size - count, count, 0);
+              count -= temp;
             }
           }
         }
