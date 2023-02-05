@@ -100,11 +100,12 @@ int main(int argc, char **argv)
     memset(ping_data, '0', size - 18);
     struct message Send, Receive;
     Send.size = (unsigned short)(strlen(ping_data) + 18 > 65535 ? 65535 : strlen(ping_data) + 18);
-    printf("Size is:%d.\n",Send.size);
+    printf("Size is:%d.\n", Send.size);
     updatetime(&Send);
     memcpy(Send.data, ping_data, Send.size - 18);
-    int epoch = 0;
-    while (epoch < iteration)
+    int epoch = 1;
+    float avg_latency = 0.0;
+    while (epoch <= iteration)
     {
         updatetime(&Send);
         // generate message
@@ -134,8 +135,14 @@ int main(int argc, char **argv)
         printf("====================================================================\n");
         printf("Epoch %d:\n", epoch);
         printf("Latency is %.3f millisecond.\n", latency);
+        avg_latency += latency;
         epoch += 1;
     }
+    avg_latency /= iteration;
+    printf("====================================================================\n");
+    printf("After %d epochs\n", iteration);
+    printf("The average latency is %.3f millisecond.\n", avg_latency);
+    printf("====================================================================\n");
     free(ping_data);
     free(receivebuffer);
     free(sendbuffer);
