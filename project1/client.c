@@ -48,7 +48,7 @@ int main(int argc, char **argv)
     /* server port number */
     unsigned short server_port = atoi(argv[2]);
     char *receivebuffer, *sendbuffer;
-    short size = atoi(argv[3]);
+    unsigned short size = atoi(argv[3]);
     int iteration = atoi(argv[4]);
     if (size < 18 || size > 65535)
     {

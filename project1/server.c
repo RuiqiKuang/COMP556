@@ -296,8 +296,8 @@ int main(int argc, char **argv)
             }
             Receive.size = (unsigned short)be16toh(*(unsigned short *)receivebuffer);
             printf("Size is %d.\n",Receive.size);
-            Receive.sec = (__time_t)be64toh(*(__time_t *)(receivebuffer + 2));
-            Receive.usec = (__suseconds_t)be64toh(*(__suseconds_t *)(receivebuffer + 10));
+            Receive.sec = (long)be64toh(*(long*)(receivebuffer + 2));
+            Receive.usec = (long)be64toh(*(long*)(receivebuffer + 10));
             memcpy(Receive.data, receivebuffer + 18, Receive.size - 18);
 
             while (Receive.size != count)
