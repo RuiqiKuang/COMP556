@@ -121,7 +121,7 @@ int main(int argc, char **argv)
   int count;
 
   /* numeric value received */
-  int num;
+  // int num;
 
   /* linked list for keeping track of connected sockets */
   struct node head;
@@ -295,9 +295,8 @@ int main(int argc, char **argv)
               count += temp;
             }
             Receive.size = (unsigned short)be16toh(*(unsigned short *)receivebuffer);
-            printf("Size is %d.\n",Receive.size);
-            Receive.sec = (long)be64toh(*(long*)(receivebuffer + 2));
-            Receive.usec = (long)be64toh(*(long*)(receivebuffer + 10));
+            Receive.sec = (long)be64toh(*(long *)(receivebuffer + 2));
+            Receive.usec = (long)be64toh(*(long *)(receivebuffer + 10));
             memcpy(Receive.data, receivebuffer + 18, Receive.size - 18);
 
             while (Receive.size != count)
@@ -307,7 +306,7 @@ int main(int argc, char **argv)
             }
             /*Receive the whole message*/
             printf("Received ping message from %s\n", inet_ntoa(current->client_addr.sin_addr));
-            //printf("size is: %d  %d\n", (unsigned short)be16toh(*(unsigned short *)receivebuffer), count);
+            // printf("size is: %d  %d\n", (unsigned short)be16toh(*(unsigned short *)receivebuffer), count);
             *(unsigned short *)sendbuffer = (unsigned short)htobe16(Receive.size);
             *(long *)(sendbuffer + 2) = (long)htobe64(Receive.sec);
             *(long *)(sendbuffer + 10) = (long)htobe64(Receive.usec);

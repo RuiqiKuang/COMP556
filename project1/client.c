@@ -96,13 +96,16 @@ int main(int argc, char **argv)
 
     // create ping message
     // message->data:
-    char *ping_data = malloc(size - 18);
-    memset(ping_data, '0', size - 18);
+    unsigned short offset = 18;
+    char *ping_data = malloc(size - offset);
+    memset(ping_data, '0', size - offset);
+    // printf("%u\n", size - offset);
+    // printf("%u\n", (unsigned short)strlen(ping_data));
     struct message Send, Receive;
-    Send.size = (unsigned short)(strlen(ping_data) + 18 > 65535 ? 65535 : strlen(ping_data) + 18);
-    printf("Size is:%d.\n", Send.size);
+    Send.size = size;
+    printf("Size is:%u.\n", Send.size);
     updatetime(&Send);
-    memcpy(Send.data, ping_data, Send.size - 18);
+    memcpy(Send.data, ping_data, Send.size - offset);
     int epoch = 1;
     float avg_latency = 0.0;
     while (epoch <= iteration)
@@ -112,7 +115,7 @@ int main(int argc, char **argv)
         *(unsigned short *)sendbuffer = (unsigned short)htobe16(Send.size); // size(2 bytes)
         *(long *)(sendbuffer + 2) = (long)htobe64(Send.sec);                // tv_sec(8 bytes)
         *(long *)(sendbuffer + 10) = (long)htobe64(Send.usec);              // tv_usec(8 bytes)
-        memcpy(sendbuffer + 18, Send.data, Send.size - 18);                 // data
+        memcpy(sendbuffer + 18, Send.data, Send.size - offset);             // data
         int send_cnt_thistime = send(sock, sendbuffer, size, 0);
         while (send_cnt_thistime < size)
         {
@@ -128,23 +131,34 @@ int main(int argc, char **argv)
         Receive.size = (unsigned short)be16toh(*(unsigned short *)receivebuffer);
         Receive.sec = (long)be64toh(*(long *)(receivebuffer + 2));
         Receive.usec = (long)be64toh(*(long *)(receivebuffer + 10));
-        memcpy(Receive.data, receivebuffer + 18, Receive.size - 18);
+        memcpy(Receive.data, receivebuffer + 18, Receive.size - offset);
         struct timeval *current_time = (struct timeval *)malloc(sizeof(struct timeval));
         gettimeofday(current_time, NULL);
         float latency = (current_time->tv_sec - Receive.sec) * 1000.000 + (current_time->tv_usec - Receive.usec) / 1000.000;
+        /*
         printf("====================================================================\n");
         printf("Epoch %d:\n", epoch);
         printf("Latency is %.3f millisecond.\n", latency);
+        */
         avg_latency += latency;
         epoch += 1;
     }
     avg_latency /= iteration;
     printf("====================================================================\n");
-    printf("After %d epochs\n", iteration);
+    // printf("After %d epochs\n", iteration);
     printf("The average latency is %.3f millisecond.\n", avg_latency);
     printf("====================================================================\n");
-    free(ping_data);
+
+    FILE *fid = fopen("out.txt", "a+");
+    if (fid == NULL)
+    {
+        printf("fail！\n");
+    }
+    fprintf(fid, "%.3f\n", avg_latency);
+    fclose(fid);
+
     free(receivebuffer);
     free(sendbuffer);
+    free(ping_data);
     return 0;
 }
