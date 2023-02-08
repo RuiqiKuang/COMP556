@@ -99,8 +99,6 @@ int main(int argc, char **argv)
     unsigned short offset = 18;
     char *ping_data = malloc(size - offset);
     memset(ping_data, '0', size - offset);
-    // printf("%u\n", size - offset);
-    // printf("%u\n", (unsigned short)strlen(ping_data));
     struct message Send, Receive;
     Send.size = size;
     printf("Size is:%u.\n", Send.size);
