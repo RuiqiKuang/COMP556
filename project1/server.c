@@ -307,7 +307,7 @@ int main(int argc, char **argv)
             // Receive.usec = (long)be64toh(*(long *)(current->receivebuffer + 10));
             // memcpy(Receive.data, current->receivebuffer + 18, Receive.size - 18);
 
-            current->size = *(unsigned short*)current->receivebuffer;
+            current->size = (unsigned short)be16toh(*(unsigned short *)current->receivebuffer);
             // while (Receive.size != count)
             // {
             //   size_thistime = recv(current->socket, current->receivebuffer + count, BUFFER_LEN - count, 0);
