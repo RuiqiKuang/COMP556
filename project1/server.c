@@ -25,6 +25,8 @@ struct node
   /* you will need to introduce some variables here to record
      all the information regarding this socket.
      e.g. what data needs to be sent next */
+  char *receivebuffer;
+  int BUFFER_LEN;
   struct node *next;
 };
 
@@ -43,6 +45,7 @@ void dump(struct node *head, int socket)
       /* remove */
       temp = current->next;
       current->next = temp->next;
+      free(temp->receivebuffer);
       free(temp); /* don't forget to free memory */
       return;
     }
@@ -57,10 +60,11 @@ void dump(struct node *head, int socket)
 void add(struct node *head, int socket, struct sockaddr_in addr)
 {
   struct node *new_node;
-
   new_node = (struct node *)malloc(sizeof(struct node));
   new_node->socket = socket;
   new_node->client_addr = addr;
+  new_node->receivebuffer = (char *)malloc(65535);
+  new_node->BUFFER_LEN = 0;
   new_node->pending_data = 0;
   new_node->next = head->next;
   head->next = new_node;
@@ -128,12 +132,12 @@ int main(int argc, char **argv)
   struct node *current, *next;
 
   /* a buffer to read data */
-  char *receivebuffer;
+  // char *receivebuffer;
   char *sendbuffer;
-  int BUF_LEN = 65535;
+  int BUFFER_LEN = 65535;
 
-  receivebuffer = (char *)malloc(BUF_LEN);
-  sendbuffer = (char *)malloc(BUF_LEN);
+  // receivebuffer = (char *)malloc(BUF_LEN);
+  sendbuffer = (char *)malloc(BUFFER_LEN);
   /* initialize dummy head node of linked list */
   head.socket = -1;
   head.next = 0;
@@ -267,8 +271,8 @@ int main(int argc, char **argv)
         {
           /* we have data from a client */
           printf("====================================================================\n");
-          count = recv(current->socket, receivebuffer, BUF_LEN, 0);
-          int temp = 0;
+          count = recv(current->socket, current->receivebuffer, BUFFER_LEN, 0);
+          int size_thistime = 0;
           if (count <= 0)
           {
             /* something is wrong */
@@ -291,18 +295,18 @@ int main(int argc, char **argv)
             // then we know when the message will end.
             while (count < 18)
             {
-              temp = recv(current->socket, receivebuffer + count, BUF_LEN - count, 0);
-              count += temp;
+              size_thistime = recv(current->socket, current->receivebuffer + count, BUFFER_LEN - count, 0);
+              count += size_thistime;
             }
-            Receive.size = (unsigned short)be16toh(*(unsigned short *)receivebuffer);
-            Receive.sec = (long)be64toh(*(long *)(receivebuffer + 2));
-            Receive.usec = (long)be64toh(*(long *)(receivebuffer + 10));
-            memcpy(Receive.data, receivebuffer + 18, Receive.size - 18);
+            Receive.size = (unsigned short)be16toh(*(unsigned short *)current->receivebuffer);
+            Receive.sec = (long)be64toh(*(long *)(current->receivebuffer + 2));
+            Receive.usec = (long)be64toh(*(long *)(current->receivebuffer + 10));
+            memcpy(Receive.data, current->receivebuffer + 18, Receive.size - 18);
 
             while (Receive.size != count)
             {
-              temp = recv(current->socket, receivebuffer + count, BUF_LEN - count, 0);
-              count += temp;
+              size_thistime = recv(current->socket, current->receivebuffer + count, BUFFER_LEN - count, 0);
+              count += size_thistime;
             }
             /*Receive the whole message*/
             printf("Received ping message from %s\n", inet_ntoa(current->client_addr.sin_addr));
@@ -313,8 +317,8 @@ int main(int argc, char **argv)
             memcpy(sendbuffer + 18, Receive.data, Receive.size - 18);
             while (count != 0)
             {
-              temp = send(current->socket, sendbuffer + Receive.size - count, count, 0);
-              count -= temp;
+              size_thistime = send(current->socket, sendbuffer + Receive.size - count, count, 0);
+              count -= size_thistime;
             }
           }
         }

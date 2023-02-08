@@ -64,7 +64,7 @@ int main(int argc, char **argv)
     receivebuffer = (char *)malloc(size);
     if (!receivebuffer)
     {
-        perror("failed to allocated buffer");
+        perror("failed to allocated receivebuffer");
         abort();
     }
 
@@ -133,11 +133,11 @@ int main(int argc, char **argv)
         struct timeval *current_time = (struct timeval *)malloc(sizeof(struct timeval));
         gettimeofday(current_time, NULL);
         float latency = (current_time->tv_sec - Receive.sec) * 1000.000 + (current_time->tv_usec - Receive.usec) / 1000.000;
-        /*
+        
         printf("====================================================================\n");
         printf("Epoch %d:\n", epoch);
         printf("Latency is %.3f millisecond.\n", latency);
-        */
+        
         avg_latency += latency;
         epoch += 1;
     }
@@ -146,7 +146,7 @@ int main(int argc, char **argv)
     // printf("After %d epochs\n", iteration);
     printf("The average latency is %.3f millisecond.\n", avg_latency);
     printf("====================================================================\n");
-
+    
     FILE *fid = fopen("out.txt", "a+");
     if (fid == NULL)
     {
@@ -154,7 +154,7 @@ int main(int argc, char **argv)
     }
     fprintf(fid, "%.3f\n", avg_latency);
     fclose(fid);
-
+    
     free(receivebuffer);
     free(sendbuffer);
     free(ping_data);
