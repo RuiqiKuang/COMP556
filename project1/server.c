@@ -302,24 +302,24 @@ int main(int argc, char **argv)
               size_thistime = recv(current->socket, current->receivebuffer + current->count, BUFFER_LEN - current->count, 0);
               current->count += size_thistime;
             }
-            // Receive.size = (unsigned short)be16toh(*(unsigned short *)current->receivebuffer);
-            // Receive.sec = (long)be64toh(*(long *)(current->receivebuffer + 2));
-            // Receive.usec = (long)be64toh(*(long *)(current->receivebuffer + 10));
-            // memcpy(Receive.data, current->receivebuffer + 18, Receive.size - 18);
+            Receive.size = (unsigned short)be16toh(*(unsigned short *)current->receivebuffer);
+            Receive.sec = (long)be64toh(*(long *)(current->receivebuffer + 2));
+            Receive.usec = (long)be64toh(*(long *)(current->receivebuffer + 10));
+            memcpy(Receive.data, current->receivebuffer + 18, Receive.size - 18);
 
             current->size = (unsigned short)be16toh(*(unsigned short *)current->receivebuffer);
-            // while (Receive.size != count)
-            // {
-            //   size_thistime = recv(current->socket, current->receivebuffer + count, BUFFER_LEN - count, 0);
-            //   count += size_thistime;
-            // }
+            while (Receive.size != count)
+            {
+              size_thistime = recv(current->socket, current->receivebuffer + count, BUFFER_LEN - count, 0);
+              count += size_thistime;
+            }
             /*Receive the whole message*/
             printf("Received ping message from %s  count %d size %d\n", inet_ntoa(current->client_addr.sin_addr),current->count,current->size);
             // printf("size is: %d  %d\n", (unsigned short)be16toh(*(unsigned short *)receivebuffer), count);
-            // *(unsigned short *)sendbuffer = (unsigned short)htobe16(Receive.size);
-            // *(long *)(sendbuffer + 2) = (long)htobe64(Receive.sec);
-            // *(long *)(sendbuffer + 10) = (long)htobe64(Receive.usec);
-            // memcpy(sendbuffer + 18, Receive.data, Receive.size - 18);
+            *(unsigned short *)sendbuffer = (unsigned short)htobe16(Receive.size);
+            *(long *)(sendbuffer + 2) = (long)htobe64(Receive.sec);
+            *(long *)(sendbuffer + 10) = (long)htobe64(Receive.usec);
+            memcpy(sendbuffer + 18, Receive.data, Receive.size - 18);
             if (current->count == current->size)
             {
               while (current->count != 0)  {
