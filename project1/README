@@ -1,9 +1,16 @@
-## Ping-Pong Client/Server
+##  Ping-Pong Client/Server
 
-### Team members:
+
+### Team:
+
+Shlok Singh Sobti (sss10)
+Advait Balaji (ab114)
+Tianyang Pan (tp36)
+
+###  Team members:
 Ruiqi Kuang, Jingze Chen, Ziang Tang, Ziyi Zhao
 
-#### Testing: We actually tested our server and client together. We first test the bounary of our port to make sure it could only accept the port between 18000 and 18200.
+####  Testing: We actually tested our server and client together. We first test the bounary of our port to make sure it could only accept the port between 18000 and 18200.
 Then we checked if message is correctly recevice by the server by testing the size of message and the content of the message.
 Then we tested the timestamp of the pong massage recevied by the client to see if the timestamp was matched by the previous massage.
 At last, to test the concurrency, we write a C program to open from 2 to 10 different client to check if all of them could run correctly.
