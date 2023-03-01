@@ -28,6 +28,8 @@ struct node
   char *receivebuffer;
   int BUFFER_LEN;
   struct node *next;
+  int count;
+  unsigned short size;
 };
 
 /* remove the data structure associated with a connected socket
@@ -67,6 +69,8 @@ void add(struct node *head, int socket, struct sockaddr_in addr)
   new_node->BUFFER_LEN = 0;
   new_node->pending_data = 0;
   new_node->next = head->next;
+  new_node->count = 0;
+  new_node->size = 0;
   head->next = new_node;
 }
 
@@ -123,7 +127,7 @@ int main(int argc, char **argv)
 
   /* number of bytes sent/received */
   int count;
-
+  int cc = 0;
   /* numeric value received */
   // int num;
 
@@ -271,12 +275,12 @@ int main(int argc, char **argv)
         {
           /* we have data from a client */
           printf("====================================================================\n");
-          count = recv(current->socket, current->receivebuffer, BUFFER_LEN, 0);
+          current->count += recv(current->socket, current->receivebuffer + current->count, BUFFER_LEN, 0);
           int size_thistime = 0;
-          if (count <= 0)
+          if (current->count <= 0)
           {
             /* something is wrong */
-            if (count == 0)
+            if (current->count == 0)
             {
               printf("Client closed connection. Client IP address is: %s\n", inet_ntoa(current->client_addr.sin_addr));
             }
@@ -293,32 +297,36 @@ int main(int argc, char **argv)
           {
             // First, we have to get the size and the time to determine the size of this message,
             // then we know when the message will end.
-            while (count < 18)
+            while (current->count < 2)
             {
-              size_thistime = recv(current->socket, current->receivebuffer + count, BUFFER_LEN - count, 0);
-              count += size_thistime;
+              size_thistime = recv(current->socket, current->receivebuffer + current->count, BUFFER_LEN - current->count, 0);
+              current->count += size_thistime;
             }
             Receive.size = (unsigned short)be16toh(*(unsigned short *)current->receivebuffer);
             Receive.sec = (long)be64toh(*(long *)(current->receivebuffer + 2));
             Receive.usec = (long)be64toh(*(long *)(current->receivebuffer + 10));
             memcpy(Receive.data, current->receivebuffer + 18, Receive.size - 18);
 
+            current->size = (unsigned short)be16toh(*(unsigned short *)current->receivebuffer);
             while (Receive.size != count)
             {
               size_thistime = recv(current->socket, current->receivebuffer + count, BUFFER_LEN - count, 0);
               count += size_thistime;
             }
             /*Receive the whole message*/
-            printf("Received ping message from %s\n", inet_ntoa(current->client_addr.sin_addr));
+            printf("Received ping message from %s  count %d size %d\n", inet_ntoa(current->client_addr.sin_addr),current->count,current->size);
             // printf("size is: %d  %d\n", (unsigned short)be16toh(*(unsigned short *)receivebuffer), count);
             *(unsigned short *)sendbuffer = (unsigned short)htobe16(Receive.size);
             *(long *)(sendbuffer + 2) = (long)htobe64(Receive.sec);
             *(long *)(sendbuffer + 10) = (long)htobe64(Receive.usec);
             memcpy(sendbuffer + 18, Receive.data, Receive.size - 18);
-            while (count != 0)
+            if (current->count == current->size)
             {
-              size_thistime = send(current->socket, sendbuffer + Receive.size - count, count, 0);
-              count -= size_thistime;
+              while (current->count != 0)  {
+                size_thistime = send(current->socket, current->receivebuffer + current->size - current->count, current->count, 0);
+                current->count -= size_thistime;
+              }
+              printf("send total times %d  size %d\n",++cc,size_thistime);
             }
           }
         }

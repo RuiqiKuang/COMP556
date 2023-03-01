@@ -19,5 +19,4 @@ clean:
 	rm -f core.*
 	rm -f server
 	rm -f client
-	rm -f out.txt
 	rm -f *.png

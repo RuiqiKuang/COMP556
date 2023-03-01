@@ -110,7 +110,7 @@ int main(int argc, char **argv)
     {
         updatetime(&Send);
         // generate message
-        *(unsigned short *)sendbuffer = (unsigned short)htobe16(Send.size); // size(2 bytes)
+         *(unsigned short *)sendbuffer = (unsigned short)htobe16(Send.size); // size(2 bytes)
         *(long *)(sendbuffer + 2) = (long)htobe64(Send.sec);                // tv_sec(8 bytes)
         *(long *)(sendbuffer + 10) = (long)htobe64(Send.usec);              // tv_usec(8 bytes)
         memcpy(sendbuffer + 18, Send.data, Send.size - offset);             // data
@@ -129,6 +129,7 @@ int main(int argc, char **argv)
         Receive.size = (unsigned short)be16toh(*(unsigned short *)receivebuffer);
         Receive.sec = (long)be64toh(*(long *)(receivebuffer + 2));
         Receive.usec = (long)be64toh(*(long *)(receivebuffer + 10));
+
         memcpy(Receive.data, receivebuffer + 18, Receive.size - offset);
         struct timeval *current_time = (struct timeval *)malloc(sizeof(struct timeval));
         gettimeofday(current_time, NULL);
