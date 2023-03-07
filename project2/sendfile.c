@@ -8,7 +8,7 @@
 
 #define SEQ_SIZE 128
 #define ACK_SIZE 3
-#define HEADER_SIZE 74
+#define HEADER_SIZE 74 //00000000 + Sequence number(1 byte) + data length(2 byte) + subdir name(50byte) + filename(20 byte).
 #define DATA_SIZE 20000
 #define CRC_SIZE 4
 
@@ -70,9 +70,7 @@ int main(int argc, char *argv[])
 		perror("Fail to open file.");
 		abort();
 	}
-	printf("Open file: %s\n", sendfile);
 	struct sockaddr_in sin;
-	/* Fill in the server's address */
 	memset(&sin, 0, sizeof(sin));
 	sin.sin_family = AF_INET;
 	sin.sin_addr.s_addr = inet_addr(recv_host);
@@ -83,43 +81,40 @@ int main(int argc, char *argv[])
 	int packet_size = HEADER_SIZE + DATA_SIZE + CRC_SIZE;
 	char *sendfile_data = (char *)malloc(DATA_SIZE * sizeof(char));
 
-	size_t packet_bytes;
+	size_t data_len;
 	char *packet_message = malloc(packet_size);
 
 	short seq_num = 0;
 	char ack_buffer[ACK_SIZE];
 
-	/* initial timeout is 10 seconds */
 	struct timeval time;
-	double timeout = 10;
-	double offset = 1;
+	double timeout = 10.0;
+	double offset = 1.0;
+	int start = 0;
 
-	while ((packet_bytes = fread(sendfile_data, 1, DATA_SIZE, fp)) >= 0)
+	while ((data_len = fread(sendfile_data, 1, DATA_SIZE, fp)) >= 0)
 	{
-		if (packet_bytes == 0)
+		if (data_len == 0)
 		{
 			seq_num = -1;
 		}
-		/* Release packet_message */
+		start += data_len;
+		printf("[send data] start:%d, length:%zu.\n",start,data_len);
 		memset(packet_message, 0, packet_size);
-
-		/* Fill content of paket_message
-		 * Header: 0 + sequence number + byte number + sub dirname + filename */
 		memset(packet_message, 0, 1);
 		memset(packet_message + 1, (char)seq_num, 1);
-		*(short *)(packet_message + 2) = htons(packet_bytes);
+		*(short *)(packet_message + 2) = htons(data_len);
 		memcpy(packet_message + 4, subdir, 50);
 		memcpy(packet_message + 54, fileName, 20);
 
-		/* Fill sendfile_data */
 		memcpy(packet_message + HEADER_SIZE, sendfile_data, DATA_SIZE);
 
-		/* Release sendfile_data */
 		memset(sendfile_data, 0, DATA_SIZE);
 
-		/* Fill CRC */
-		uint32_t crc = crc32((uint8_t *)&packet_message[0], packet_size - CRC_SIZE);
-		*(uint32_t *)(packet_message + packet_size - CRC_SIZE) = htonl(crc);
+		/* calculate CRC */
+		uint32_t crc = crc32((uint8_t *)&packet_message[0],  HEADER_SIZE + DATA_SIZE);
+		*(uint32_t *)(packet_message +  HEADER_SIZE + DATA_SIZE) = htonl(crc);
+
 		while (1)
 		{
 			ssize_t count = -1;
@@ -127,28 +122,22 @@ int main(int argc, char *argv[])
 			{
 				count = sendto(sock, packet_message, packet_size, MSG_WAITALL, (struct sockaddr *)&sin, sizeof(sin));
 			}
-			/* Set timeout value */
 			time.tv_sec = (int)timeout;
 			time.tv_usec = (timeout - time.tv_sec) * 1000000;
-			clock_t start = clock();
-
 			setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char *)&time, sizeof time);
-
+			clock_t start = clock();
 			ssize_t ack = recvfrom(sock, ack_buffer, ACK_SIZE, MSG_WAITALL, (struct sockaddr *)&sin, &addr_len);
 
 			if (ack > 0 && ack_buffer[1] == (char)seq_num)
 			{
-				/* Adapt timeout value according to the recent RTT */
+				/* Adaptive timeout*/
 				clock_t end = clock();
 				timeout = ((double)(end - start) / CLOCKS_PER_SEC) * 1000 + offset;
 
-				/* Make sure seq_num not equal to -1 */
 				if (seq_num >= 0)
 				{
 					seq_num = (seq_num + 1) % SEQ_SIZE;
 				}
-
-				/* Break and send next packet message */
 				printf("Succeed to send packet\n");
 				break;
 			}
@@ -166,8 +155,6 @@ int main(int argc, char *argv[])
 			break;
 		}
 	}
-
-	/* Free buffer */
 	free(sendfile_data);
 	free(packet_message);
 	close(sock);
