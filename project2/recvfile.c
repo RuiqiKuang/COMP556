@@ -101,7 +101,7 @@ int main (int argc, char** argv) {
 
 		size_t data_len = (short) ntohs(*(short*) (recv_buffer + 2));
 
-		char subdir[50];
+		char subdir[40];
 		memcpy(subdir, recv_buffer + 4, 40);
 		char fileName[20];
 		memcpy(fileName, recv_buffer + 44, 20);
