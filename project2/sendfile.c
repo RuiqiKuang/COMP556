@@ -6,9 +6,9 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
-#define SEQ_SIZE 128
+#define SEQ_SIZE 128 //maximum for 1 byte seq number, but only 64 is useful 
 #define ACK_SIZE 3
-#define HEADER_SIZE 74 //00000000 + Sequence number(1 byte) + data length(2 byte) + subdir name(50byte) + filename(20 byte).
+#define HEADER_SIZE 64 //00000000 + Sequence number(1 byte) + data length(2 byte) + subdir name(40byte) + filename(20 byte).
 #define DATA_SIZE 20000
 #define CRC_SIZE 4
 
@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
 	/* Create a UDP socket */
 	if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
 	{
-		perror("Fail to create socket.");
+		perror("Fail to create a UDP socket.");
 		abort();
 	}
 
@@ -104,8 +104,8 @@ int main(int argc, char *argv[])
 		memset(packet_message, 0, 1);
 		memset(packet_message + 1, (char)seq_num, 1);
 		*(short *)(packet_message + 2) = htons(data_len);
-		memcpy(packet_message + 4, subdir, 50);
-		memcpy(packet_message + 54, fileName, 20);
+		memcpy(packet_message + 4, subdir, 40);
+		memcpy(packet_message + 44, fileName, 20);
 
 		memcpy(packet_message + HEADER_SIZE, sendfile_data, DATA_SIZE);
 
@@ -133,7 +133,6 @@ int main(int argc, char *argv[])
 				/* Adaptive timeout*/
 				clock_t end = clock();
 				timeout = ((double)(end - start) / CLOCKS_PER_SEC) * 1000 + offset;
-
 				if (seq_num >= 0)
 				{
 					seq_num = (seq_num + 1) % SEQ_SIZE;
@@ -145,7 +144,7 @@ int main(int argc, char *argv[])
 			{
 				timeout += offset;
 				perror("Fail to receive ACK.");
-				printf("Try to resend packet message.\n");
+				printf("Resend packet.\n");
 			}
 		}
 
