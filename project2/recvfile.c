@@ -10,7 +10,7 @@
 
 #define SEQ_SIZE 128 // maximum for 1 byte seq number, but only 64 is useful
 #define ACK_SIZE 3
-#define HEADER_SIZE 64 // 00000000 + Sequence number(1 byte) + data length(2 byte) + subdir name(40byte) + filename(20 byte).
+#define HEADER_SIZE 74 // 00000000 + Sequence number(1 byte) + data length(2 byte) + subdir name(50byte) + filename(20 byte).
 #define DATA_SIZE 20000
 #define CRC_SIZE 4
 
@@ -103,10 +103,10 @@ int main(int argc, char **argv)
 
 		size_t data_len = (short)ntohs(*(short *)(recv_buffer + 2));
 
-		char subdir[40];
-		memcpy(subdir, recv_buffer + 4, 40);
+		char subdir[50];
+		memcpy(subdir, recv_buffer + 4, 50);
 		char fileName[20];
-		memcpy(fileName, recv_buffer + 44, 20);
+		memcpy(fileName, recv_buffer + 54, 20);
 		char recv_data[data_len];
 		memcpy(recv_data, recv_buffer + HEADER_SIZE, data_len);
 
@@ -120,7 +120,7 @@ int main(int argc, char **argv)
 			continue;
 		}
 
-		if ((short)seq_num_received < seq_num )
+		if ((short)seq_num_received < seq_num)
 		{
 			printf("IGNORED.\n");
 		}
