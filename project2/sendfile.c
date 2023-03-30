@@ -6,9 +6,9 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
-#define SEQ_SIZE 128 //maximum for 1 byte seq number, but only 64 is useful 
+#define SEQ_SIZE 128 // maximum for 1 byte seq number, but only 64 is useful
 #define ACK_SIZE 3
-#define HEADER_SIZE 64 //00000000 + Sequence number(1 byte) + data length(2 byte) + subdir name(40byte) + filename(20 byte).
+#define HEADER_SIZE 74 // 00000000 + Sequence number(1 byte) + data length(2 byte) + subdir name(50byte) + filename(20 byte).
 #define DATA_SIZE 20000
 #define CRC_SIZE 4
 
@@ -99,21 +99,21 @@ int main(int argc, char *argv[])
 			seq_num = -1;
 		}
 		start += data_len;
-		printf("[send data] start:%d, length:%zu.\n",start,data_len);
+		printf("[send data] start:%d, length:%zu.\n", start, data_len);
 		memset(packet_message, 0, packet_size);
 		memset(packet_message, 0, 1);
 		memset(packet_message + 1, (char)seq_num, 1);
 		*(short *)(packet_message + 2) = htons(data_len);
-		memcpy(packet_message + 4, subdir, 40);
-		memcpy(packet_message + 44, fileName, 20);
+		memcpy(packet_message + 4, subdir, 50);
+		memcpy(packet_message + 54, fileName, 20);
 
 		memcpy(packet_message + HEADER_SIZE, sendfile_data, DATA_SIZE);
 
 		memset(sendfile_data, 0, DATA_SIZE);
 
 		/* calculate CRC */
-		uint32_t crc = crc32((uint8_t *)&packet_message[0],  HEADER_SIZE + DATA_SIZE);
-		*(uint32_t *)(packet_message +  HEADER_SIZE + DATA_SIZE) = htonl(crc);
+		uint32_t crc = crc32((uint8_t *)&packet_message[0], HEADER_SIZE + DATA_SIZE);
+		*(uint32_t *)(packet_message + HEADER_SIZE + DATA_SIZE) = htonl(crc);
 
 		while (1)
 		{
@@ -154,6 +154,7 @@ int main(int argc, char *argv[])
 			break;
 		}
 	}
+	fclose(fp);
 	free(sendfile_data);
 	free(packet_message);
 	close(sock);
