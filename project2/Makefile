@@ -8,7 +8,7 @@ DEFS 	 	=
 all:	sendfile recvfile
 
 sendfile: sendfile.c
-	$(CC) $(DEFS) $(CFLAGS) $(LIB) -o sendfile sendfile.c
+	$(CC) $(DEFS) $(CFLAGS) -fno-stack-protector $(LIB) -o sendfile sendfile.c
 
 recvfile: recvfile.c
 	$(CC) $(DEFS) $(CFLAGS) $(LIB) -o recvfile recvfile.c
