@@ -45,7 +45,8 @@ private:
   eProtocolType protocol_type;
 
   unordered_map<unsigned short, tuple<unsigned short, unsigned short, unsigned int>> neighbor_table; // neighbor's router ID: <cost, port, timeout>
-  unordered_map<unsigned short, unsigned short> port_table;//port: neighbor's router ID
+  unordered_map<unsigned short, unsigned short> port_table; //port: neighbor's router ID
+  unordered_map<unsigned short, pair<unsigned short, unsigned short>> routing_table; // destination ID: <cost, next_hop>
 
   // PING & PONG
   int ping_pong_msg_size = 12;
@@ -54,5 +55,21 @@ private:
   void recv_ping_send_pong(unsigned short port, char *msg);
   void recv_pong(unsigned short port, char *msg);
 };
+
+  // LS
+  // key: u, value: (key: v, value: <cost, timeout>)
+  unordered_map<unsigned short, unordered_map<unsigned short, pair<unsigned short, unsigned int>>> graph;
+  // key: router_id, value: max_sequence_num
+  unordered_map<unsigned short, unsigned long long> max_sequence_num;
+  unsigned long long sequence_num;
+  void recv_LS(unsigned short port, char *msg, unsigned short size); 
+  void send_LS(char *msg, unsigned short size, unsigned short last_port);
+  void update_LS();
+  // internal tools
+  void update_forwarding_table();
+  void del_node(unsigned short u);
+  void add_edge(unsigned short u, unsigned short v, unsigned short weight);
+
+	void update_timeout();
 
 #endif
