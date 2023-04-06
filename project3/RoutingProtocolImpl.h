@@ -70,6 +70,6 @@ private:
   void del_node(unsigned short u);
   void add_edge(unsigned short u, unsigned short v, unsigned short weight);
 
-	void update_timeout();
+  void update_timeout();
 
 #endif
