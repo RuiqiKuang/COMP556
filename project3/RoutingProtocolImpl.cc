@@ -13,7 +13,34 @@ RoutingProtocolImpl::~RoutingProtocolImpl()
 
 void RoutingProtocolImpl::init(unsigned short num_ports, unsigned short router_id, eProtocolType protocol_type)
 {
-  // add your own code
+  if( protocol_type != P_LS && protocol_type != P_DV) {
+		cout << "Error: Unknown protocol type!" << endl;
+		exit(EXIT_FAILURE);
+	}
+	this->num_ports = num_ports;
+	this->router_id = router_id;
+	this->protocol_type = protocol_type;
+  
+	// initialize step: 1.send the ping message 2.set periodic alarm for handle alarm
+  
+	// send first ping message to all ports
+	for(unsigned int p; p < num_ports; p++){
+		send_ping_packet(p);
+	}
+  
+	// set periodic alarm: 1. send PingMessage 2. check timeout 3. update DV 4. update LS
+	// send PingMessage. duration set 10000
+	sys->set_alarm(this, PING_DURATION, (void *)this->Ping_update_alarm);
+  // check timeout. duration set 1000
+	sys->set_alarm(this, TIMEOUT_DURATION, (void *)this->Port_update_alarm);
+	// update DV duration set 30000 and update LS duration set 30000
+	if (protocol_type == P_DV) {
+		sys->set_alarm(this, DV_DURATION, (void *)this->DV_update_alarm);
+
+	} else if (protocol_type == P_LS)	{
+		sequence_num = 0;
+		sys->set_alarm(this, LS_DURATION, (void *)this->LS_update_alarm);
+	}
 }
 
 void RoutingProtocolImpl::handle_alarm(void *data)
@@ -92,4 +119,55 @@ void recv_pong(unsigned short port, char *msg)
   {
     // TODO: update with the specific protocol
   }
+}
+
+void RoutingProtocolImpl::update_timeout() {
+	// check port states
+	unsigned short cost, port;
+	unsigned int timeout;
+	bool changed = false;
+	for (auto it = neighbor_table.begin(); it != neighbor_table.end();) {
+		auto next_it = next(it);
+		tie(cost, port, timeout) = it->second;
+		if(sys->time() >= timeout) {
+			neighbor_table.erase(it);
+			port_table.erase(port);
+			changed = true;
+		}
+		it = next_it;
+	}
+
+	// cout << "my protocol: " << protocol << endl;
+	if (protocol_type == P_DV) {
+		for (auto it_in_DV_timeout = DV_timeout.begin(); it_in_DV_timeout != DV_timeout.end(); ) {
+			auto next_it_in_DV_timeout = next(it_in_DV_timeout);
+			auto it_in_routing_table = routing_table.find(it_in_DV_timeout->first);
+			if (sys->time() >= it_in_DV_timeout->second) {
+				routing_table.erase(it_in_routing_table);
+				DV_timeout.erase(it_in_DV_timeout);
+				changed = true;
+			}
+			it_in_DV_timeout = next_it_in_DV_timeout;
+		}
+		if (changed) {
+			update_DV();
+		}
+		// cout << "DV done" << endl;
+	} else {
+		// print_graph();
+		for (auto &it_in_graph : graph) {
+			auto &edges = it_in_graph.second;
+			for (auto edge = edges.begin(); edge != edges.end();) {
+				auto next_edge = next(edge);
+				if (sys->time() >= edge->second.second) {
+					edges.erase(edge);
+					changed = true;
+				}
+				edge = next_edge;
+			}
+		}
+		if (changed) {
+			update_LS();
+		}
+	}
 }
