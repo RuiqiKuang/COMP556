@@ -1,7 +1,20 @@
 #ifndef ROUTINGPROTOCOLIMPL_H
 #define ROUTINGPROTOCOLIMPL_H
 
+#include <arpa/inet.h>
+#include <unordered_map>
+#include <utility>
 #include "RoutingProtocol.h"
+#include "DVProImp.h"
+#include "Node.h"
+
+
+#define DV_LS_TIMEOUT 45000
+
+#define PING_DURATION 10000
+#define DV_DURATION 30000
+#define LS_DURATION 30000
+#define TIMEOUT_DURATION 1000
 
 class RoutingProtocolImpl : public RoutingProtocol {
   public:
@@ -36,7 +49,32 @@ class RoutingProtocolImpl : public RoutingProtocol {
     // a neighbor router.
 
  private:
-    Node *sys; // To store Node object; used to access GSR9999 interfaces 
+    Node *sys;// To store Node object; used to access GSR9999 interfaces
+
+    unsigned short num_ports;
+    unsigned short router_id;
+    eProtocolType protocol_type;
+
+    unordered_map<unsigned short, tuple<unsigned short, unsigned short, unsigned int>> neighbor_table; // neighbor's router ID: <cost, port, timeout>
+    unordered_map<unsigned short, unsigned short> port_table;//port: neighbor's router ID
+    unordered_map<unsigned short, pair<unsigned short, unsigned short>> routing_table;
+
+    const char* Ping_alarm = "Ping";
+    const char* DV_alarm = "DV";
+    const char* LS_alarm = "LS";
+    const char* Port_alarm = "Port";
+
+    DVProImp Dv;
+
+    int ping_pong_msg_size = 12;
+    int ping_pong_timeout = 15000; // A link should be declared dead when the status has not been refreshed for 15 seconds
+    void send_ping(unsigned short port);
+    void recv_ping_send_pong(unsigned short port, char *msg);
+    void recv_pong(unsigned short port, char *msg);
+
+    void recv_data(unsigned short port, char *packet, unsigned short size);
+
+    void update_timeout();
 };
 
 #endif
