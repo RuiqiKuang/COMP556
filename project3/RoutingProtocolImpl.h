@@ -4,6 +4,20 @@
 #include "RoutingProtocol.h"
 #include "DVProImp.h"
 
+#include <arpa/inet.h>
+#include <unordered_map>
+#include <utility>
+#include "Node.h"
+
+#define PING_PONG_PACK_SIZE 12
+#define PONG_TIMEOUT 15000
+#define DV_LS_TIMEOUT 45000
+
+#define PING_DURATION 10000
+#define DV_DURATION 30000
+#define LS_DURATION 30000
+#define TIMEOUT_DURATION 1000
+
 class RoutingProtocolImpl : public RoutingProtocol {
 public:
     RoutingProtocolImpl(Node *n);
@@ -70,22 +84,16 @@ private:
     // key: router_id, value: max_sequence_num
     unordered_map<unsigned short, unsigned long long> max_sequence_num;
     unsigned long long sequence_num;
-
     void recv_LS(unsigned short port, char *msg, unsigned short size);
-
     void send_LS(char *msg, unsigned short size, unsigned short last_port);
-
     void update_LS();
-
     // internal tools
     void update_forwarding_table();
-
     void del_node(unsigned short u);
-
     void add_edge(unsigned short u, unsigned short v, unsigned short weight);
 
     void update_timeout();
-
+    
     void recv_data(unsigned short port, char *packet, unsigned short size);
 };
 #endif
