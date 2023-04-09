@@ -136,7 +136,7 @@ void RoutingProtocolImpl::del_node(unsigned short node_id) {
         auto &edges = it_in_graph.second;
         for (auto edge = edges.begin(); edge != edges.end();) {
             auto next_edge = next(edge);
-            if (edge.first == node_id) {
+            if (edge->second.first == node_id) {
                 edges.erase(edge);
             }
             edge = next_edge;
