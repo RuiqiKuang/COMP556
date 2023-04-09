@@ -18,7 +18,7 @@
 
 class DVProImp {
 public :
-    DVProImp(unordered_map<unsigned short, tuple<unsigned short, unsigned short, unsigned int>> &neighbor_table,unordered_map<unsigned short, pair<unsigned short, unsigned short>> &routing_table, unordered_map<unsigned short, unsigned short> &port_table,
+    void init(unordered_map<unsigned short, tuple<unsigned short, unsigned short, unsigned int>> &neighbor_table,unordered_map<unsigned short, pair<unsigned short, unsigned short>> &routing_table, unordered_map<unsigned short, unsigned short> &port_table,
              unsigned short router_id,unsigned short num_ports, Node *sys);
     DVProImp();
 
@@ -28,9 +28,9 @@ public :
 
     void send();
 
-    void sendDV(unsigned short ID, unsigned short port,char *commonPart);
+ 
 
-    char* generateDVMsg();
+   
 
     void send_DV(unsigned short port_id, unsigned short dest_id);
 

@@ -15,7 +15,7 @@ void RoutingProtocolImpl::init(unsigned short num_ports, unsigned short router_i
     this->protocol_type = protocol_type;
     this->router_id = router_id;
 
-    Dv = DVProImp(neighbor_table,routing_table,port_table,router_id,num_ports,sys);
+    Dv.init(neighbor_table,routing_table,port_table,router_id,num_ports,sys);
 
     for(unsigned int p; p < num_ports; p++){
         send_ping(p);
@@ -166,10 +166,13 @@ void RoutingProtocolImpl::recv_pong(unsigned short port, char *msg)
                 break;
             case P_DV:
                 Dv.update(neighbor_router_id,RTT,oldID);
+                printf("here \n");
                 Dv.send();
+                printf("here1 \n");
                 break;
         }
     }
+     
 }
 
 void RoutingProtocolImpl::recv_data(unsigned short port, char* packet, unsigned short size) {
