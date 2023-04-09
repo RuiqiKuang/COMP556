@@ -3,13 +3,16 @@ COPTS = -g -Wall -std=c++11
 LKOPTS = 
 
 OBJS =\
+    DVProImp.o\
 	Event.o\
 	Link.o\
+	LSImpl.o\
 	Node.o\
 	RoutingProtocolImpl.o\
 	Simulator.o
 
 HEADRES =\
+    DVProImp.h\
 	global.h\
 	Event.h\
 	Link.h\
