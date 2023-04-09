@@ -1,21 +1,21 @@
 #include "RoutingProtocolImpl.h"
 
 RoutingProtocolImpl::RoutingProtocolImpl(Node *n) : RoutingProtocol(n) {
-  sys = n;
-  // add your own code
+    sys = n;
+    // add your own code
 }
 
 RoutingProtocolImpl::~RoutingProtocolImpl() {
-  // add your own code (if needed)
+    // add your own code (if needed)
 }
 
 void RoutingProtocolImpl::init(unsigned short num_ports, unsigned short router_id, eProtocolType protocol_type) {
-  // add your own code
-  this->num_ports = num_ports;
-  this->router_id = protocol_type;
-  this->router_id = router_id;
+    // add your own code
+    this->num_ports = num_ports;
+    this->protocol_type = protocol_type;
+    this->router_id = router_id;
 
-  Dv = DVProImp(neighbor_table,routing_table,port_table,router_id,num_ports,sys);
+    Dv = DVProImp(neighbor_table,routing_table,port_table,router_id,num_ports,sys);
 
     for(unsigned int p; p < num_ports; p++){
         send_ping(p);
@@ -29,7 +29,8 @@ void RoutingProtocolImpl::init(unsigned short num_ports, unsigned short router_i
         sys->set_alarm(this, DV_DURATION, (void *)this->DV_alarm);
 
     } else if (protocol_type == P_LS)	{
-
+        sequence_num = 0;
+		sys->set_alarm(this, LS_DURATION, (void *)this->LS_alarm);
     }
 
 }
@@ -64,7 +65,7 @@ void RoutingProtocolImpl::handle_alarm(void *data) {
 }
 
 void RoutingProtocolImpl::recv(unsigned short port, void *packet, unsigned short size) {
-  // add your own code
+    // add your own code
     char *packet_as_cstring = (char*) packet;
     switch(packet_as_cstring[0]) {
         case PING:
@@ -80,7 +81,7 @@ void RoutingProtocolImpl::recv(unsigned short port, void *packet, unsigned short
             break;
 
         case LS:
-
+            recv_LS(port, packet_as_cstring, size);
             break;
 
         case DATA:
@@ -161,7 +162,7 @@ void RoutingProtocolImpl::recv_pong(unsigned short port, char *msg)
     {
         switch(protocol_type){
             case P_LS:
-
+                update_LS();
                 break;
             case P_DV:
                 Dv.update(neighbor_router_id,RTT,oldID);
@@ -215,8 +216,20 @@ void RoutingProtocolImpl::update_timeout() {
         Dv.refresh();
         // cout << "DV done" << endl;
     } else {
-        // print_graph();
-
+        for (auto &it_in_graph : graph) {
+			auto &edges = it_in_graph.second;
+			for (auto edge = edges.begin(); edge != edges.end();) {
+				auto next_edge = next(edge);
+				if (sys->time() >= edge->second.second) {
+					edges.erase(edge);
+					changed = true;
+				}
+				edge = next_edge;
+			}
+		}
+		if (changed) {
+			update_LS();
+		}
     }
 }
 
