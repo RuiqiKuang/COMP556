@@ -2,7 +2,7 @@
 // Created by 陈镜泽 on 2023/4/6.
 //
 #include "DVProImp.h"
-DVProImp :: DVProImp (unordered_map<unsigned short, tuple<unsigned short, unsigned short, unsigned int>> &neighbor_table,unordered_map<unsigned short, pair<unsigned short, unsigned short>> &routing_table,unordered_map<unsigned short, unsigned short> &port_table,
+void DVProImp :: init (unordered_map<unsigned short, tuple<unsigned short, unsigned short, unsigned int>> &neighbor_table,unordered_map<unsigned short, pair<unsigned short, unsigned short>> &routing_table,unordered_map<unsigned short, unsigned short> &port_table,
                       unsigned short router_id,unsigned short num_ports, Node *sys) {
     this->router_id = router_id;
     this->neighbor_table = neighbor_table;
@@ -11,6 +11,10 @@ DVProImp :: DVProImp (unordered_map<unsigned short, tuple<unsigned short, unsign
     this->num_ports = num_ports;
     this->sys = sys;
     IsUpdated = true;
+}
+
+DVProImp :: DVProImp () {
+
 }
 
 void DVProImp ::recv(unsigned short port, char *msg, unsigned short size) {
@@ -72,41 +76,14 @@ void DVProImp ::recv(unsigned short port, char *msg, unsigned short size) {
 }
 
 void DVProImp ::send() {
-    char * commonPart = generateDVMsg();
+    
     for (auto neighbor : neighbor_table) {
         send_DV(get<1>(neighbor.second), neighbor.first);
     }
 }
 
-//void DVProImp ::sendDV(unsigned short ID, unsigned short port, char *commonPart) {
-//    unsigned short size = 8 + routing_table.size() * 4;
-//    char * msg = (char *) malloc(size);
-//    *msg = (char) DV;
-//    *(unsigned short *) (msg + 2) = (unsigned short) htons(size);
-//    *(unsigned short *) (msg + 4) = (unsigned short) htons(this->router_id);
-//    *(unsigned short *) (msg + 6) = (unsigned short) htons(ID);
-//    memcpy(msg+8,commonPart,routing_table.size() * 4);
-//    sys->send(port,msg,size);
-//}
-//
-//char * DVProImp ::generateDVMsg() {
-//    char * msg = (char *) malloc(routing_table.size() * 4);
-//    int i = 0;
-//    for (auto route: routing_table) {
-//        unsigned short ID = route.first;
-//        auto cost_hop = route.second;
-//        unsigned short cost = cost_hop.first;
-//       // unsigned short hop = cost_hop.second;
-//        // Poison reverse
-//      if (dest_id == hop) {
-//          cost = INFINITY_COST;
-//       }
-//        *(unsigned short *) (msg + 8 + i * 4) = (unsigned short) htons(ID);
-//        *(unsigned short *) (msg + 10 + i * 4) = (unsigned short) htons(cost);
-//        i += 1;
-//    }
-//    return msg;
-//}
+
+
 
 void DVProImp::send_DV(unsigned short port_id, unsigned short dest_id) {
     unsigned short num_entries = routing_table.size();
