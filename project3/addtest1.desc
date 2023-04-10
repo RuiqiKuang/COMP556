@@ -1,0 +1,9 @@
+Three nodes sending data packets at periodic intervals to each other.
+
+Tests whether
+
+1) poison reverse DV variant is being handled
+2) changedelay is being executed
+2) ping and pong packets are being sent
+3) periodic updates are being sent
+4) data packets are being sent

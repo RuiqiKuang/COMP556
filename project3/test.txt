@@ -1,0 +1,16 @@
+We tested our code through multiple test cases for both DV and LS protocols.
+
+Except for the simpletest 1 & 2 provided as default test cases, we designed our own test csses.
+
+
+(1) addtest1
+
+In addtest1, we test if our code can handle poison reverse before and after changedelay
+
+(2) addtest2
+
+In addtest2, we test if our code can handle poison reverse with linkdying and linkcomingup
+
+(3) addtest3
+
+In addtest3, we used a slightly large graph to test Dijkstra’s algorithm
