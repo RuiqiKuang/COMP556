@@ -15,9 +15,9 @@ void RoutingProtocolImpl::init(unsigned short num_ports, unsigned short router_i
     this->protocol_type = protocol_type;
     this->router_id = router_id;
 
-    Dv.init(neighbor_table,routing_table,port_table,router_id,num_ports,sys);
+    Dv.init(&neighbor_table,&routing_table,&port_table,router_id,num_ports,sys);
 
-    for(unsigned int p; p < num_ports; p++){
+    for(unsigned int p = 0; p < num_ports; p++){
         send_ping(p);
     }
 
@@ -43,7 +43,7 @@ void RoutingProtocolImpl::handle_alarm(void *data) {
     char *alarm_type = (char *)data;
     if (strcmp(alarm_type,this->Ping_alarm) == 0) {
         // add code...send_ping_packet() and set the next alarm
-        for(unsigned int p; p < num_ports; p++) {
+        for(unsigned int p = 0; p < num_ports; p++) {
             send_ping(p);
         }
         sys->set_alarm(this, PING_DURATION, (void *)this->Ping_alarm);
@@ -131,7 +131,7 @@ void RoutingProtocolImpl::recv_pong(unsigned short port, char *msg)
     unsigned short neighbor_router_id = (unsigned short)ntohs(*(unsigned short *)(msg + 4));
     unsigned short RTT = (short)(sys->time() - (unsigned int)ntohl(*(unsigned int *)(msg + 8)));
     bool update = false;
-    unsigned oldID = port_table[port];
+
     if (port_table.find(port) != port_table.end())
     {
         // neighbor's router ID: <cost, port, timeout>
@@ -144,12 +144,7 @@ void RoutingProtocolImpl::recv_pong(unsigned short port, char *msg)
             update = true;
         }
         neighbor_table[neighbor_router_id] = make_tuple(RTT, port, sys->time() + this->ping_pong_timeout);
-        if (neighbor_router_id != prev_id)
-        {
-            port_table[port] = neighbor_router_id;
-            neighbor_table.erase(prev_id);
-            update = true;
-        }
+
     }
     else
     {
@@ -165,7 +160,7 @@ void RoutingProtocolImpl::recv_pong(unsigned short port, char *msg)
                 update_LS();
                 break;
             case P_DV:
-                Dv.update(neighbor_router_id,RTT,oldID);
+                Dv.update(neighbor_router_id,RTT);
                 printf("here \n");
                 Dv.send();
                 printf("here1 \n");

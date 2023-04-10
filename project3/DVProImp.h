@@ -18,13 +18,13 @@
 
 class DVProImp {
 public :
-    void init(unordered_map<unsigned short, tuple<unsigned short, unsigned short, unsigned int>> &neighbor_table,unordered_map<unsigned short, pair<unsigned short, unsigned short>> &routing_table, unordered_map<unsigned short, unsigned short> &port_table,
+    void init(unordered_map<unsigned short, tuple<unsigned short, unsigned short, unsigned int>> *neighbor_table,unordered_map<unsigned short, pair<unsigned short, unsigned short>> *routing_table, unordered_map<unsigned short, unsigned short> *port_table,
              unsigned short router_id,unsigned short num_ports, Node *sys);
     DVProImp();
 
     void recv(unsigned short port, char *msg, unsigned short size);
 
-    void update(unsigned short id, unsigned short RTT,unsigned short oldPort);
+    void update(unsigned short id, unsigned short RTT);
 
     void send();
 
@@ -36,9 +36,9 @@ public :
 
     bool refresh();
 private:
-    unordered_map<unsigned short, tuple<unsigned short, unsigned short, unsigned int>> neighbor_table;
-    unordered_map<unsigned short, pair<unsigned short, unsigned short>> routing_table;
-    unordered_map<unsigned short, unsigned short> port_table;
+    unordered_map<unsigned short, tuple<unsigned short, unsigned short, unsigned int>> *neighbor_table;
+    unordered_map<unsigned short, pair<unsigned short, unsigned short>> *routing_table;
+    unordered_map<unsigned short, unsigned short> *port_table;
     unordered_map<unsigned short, unsigned int> DV_time;
     unsigned short router_id;
     unsigned short num_ports;
