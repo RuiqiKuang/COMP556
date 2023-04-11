@@ -8,6 +8,7 @@
 #include "Node.h"
 #include "string.h"
 #include <arpa/inet.h>
+#include <set>
 
 #define DV_LS_TIMEOUT 45000
 
@@ -24,14 +25,12 @@ public :
 
     void recv(unsigned short port, char *msg, unsigned short size);
 
-    void update(unsigned short id, unsigned short RTT);
+    void update(unsigned short id, unsigned short RTT,unsigned short oldRTT);
 
     void send();
 
  
-
-   
-
+    void earseDV(set<unsigned short > &toEarse);
     void send_DV(unsigned short port_id, unsigned short dest_id);
 
     bool refresh();

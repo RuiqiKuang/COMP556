@@ -1,3 +1,4 @@
+#include <set>
 #include "RoutingProtocolImpl.h"
 
 RoutingProtocolImpl::RoutingProtocolImpl(Node *n) : RoutingProtocol(n) {
@@ -131,19 +132,20 @@ void RoutingProtocolImpl::recv_pong(unsigned short port, char *msg)
     unsigned short neighbor_router_id = (unsigned short)ntohs(*(unsigned short *)(msg + 4));
     unsigned short RTT = (short)(sys->time() - (unsigned int)ntohl(*(unsigned int *)(msg + 8)));
     bool update = false;
-
+    unsigned short oldRTT = 0;
     if (port_table.find(port) != port_table.end())
     {
         // neighbor's router ID: <cost, port, timeout>
         unsigned short prev_cost, prev_id;
         prev_id = port_table[port];
         prev_cost = get<0>(neighbor_table[prev_id]);
-
+        oldRTT = routing_table[neighbor_router_id].first;
         if (prev_cost != RTT)
         {
             update = true;
         }
         neighbor_table[neighbor_router_id] = make_tuple(RTT, port, sys->time() + this->ping_pong_timeout);
+
 
     }
     else
@@ -160,10 +162,10 @@ void RoutingProtocolImpl::recv_pong(unsigned short port, char *msg)
                 update_LS();
                 break;
             case P_DV:
-                Dv.update(neighbor_router_id,RTT);
-                printf("here \n");
+                Dv.update(neighbor_router_id,RTT,oldRTT);
+
                 Dv.send();
-                printf("here1 \n");
+
                 break;
         }
     }
@@ -197,12 +199,15 @@ void RoutingProtocolImpl::update_timeout() {
     unsigned short cost, port;
     unsigned int timeout;
     bool changed = false;
+    set<unsigned short > toEarse;
     for (auto it = neighbor_table.begin(); it != neighbor_table.end();) {
         auto next_it = next(it);
         tie(cost, port, timeout) = it->second;
         if(sys->time() >= timeout) {
+            toEarse.insert(it->first);
             neighbor_table.erase(it);
             port_table.erase(port);
+
             changed = true;
         }
         it = next_it;
@@ -210,7 +215,8 @@ void RoutingProtocolImpl::update_timeout() {
 
     // cout << "my protocol: " << protocol << endl;
     if (protocol_type == P_DV) {
-
+        if (changed)
+        Dv.earseDV(toEarse);
         Dv.refresh();
         // cout << "DV done" << endl;
     } else {

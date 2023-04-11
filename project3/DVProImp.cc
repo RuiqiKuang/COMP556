@@ -36,9 +36,18 @@ void DVProImp ::recv(unsigned short port, char *msg, unsigned short size) {
     free(msg);
 
     vector<unsigned short > eraseNodes;
+
+    if (routing_table->count(source_id) != 0) {
+        if ((*routing_table)[source_id].first > DV_table[this->router_id] && (*routing_table)[source_id].second != source_id) {
+            (*routing_table)[source_id].first = DV_table[this->router_id];
+            (*routing_table)[source_id].second = source_id;
+            IsUpdated = false;
+        }
+    }
     for(auto DVentry : DV_table) {
-        if (DVentry.first == this->router_id)
+        if (DVentry.first == this->router_id) {
             continue;
+        }
         if (DVentry.second == INFINITY_COST) {
 //            if (routing_table.count(DVentry.first) != 0) {
 //                auto nextHop = routing_table[DVentry.first].second;
@@ -51,17 +60,19 @@ void DVProImp ::recv(unsigned short port, char *msg, unsigned short size) {
             continue;
         }
 
-        DV_time[DVentry.first] = sys->time() + DV_LS_TIMEOUT;
-
         unsigned short totalCost = DVentry.second + get<0>(neighbor_table->find((*port_table)[port])->second);
 
         if (routing_table->count(DVentry.first) == 0) {
             (*routing_table)[DVentry.first] = make_pair(totalCost, source_id);
+            DV_time[DVentry.first] = sys->time() + DV_LS_TIMEOUT;
             IsUpdated = false;
         }else {
-            if ((*routing_table)[DVentry.first].second == source_id || (*routing_table)[DVentry.first].first > totalCost) {
+            if((*routing_table)[DVentry.first].second == source_id && (*routing_table)[DVentry.first].first == totalCost)
+                DV_time[DVentry.first] = sys->time() + DV_LS_TIMEOUT;
+            if (((*routing_table)[DVentry.first].second == source_id && (*routing_table)[DVentry.first].first != totalCost) || (*routing_table)[DVentry.first].first > totalCost) {
                 (*routing_table)[DVentry.first] = make_pair(totalCost, source_id);
                 IsUpdated = false;
+                DV_time[DVentry.first] = sys->time() + DV_LS_TIMEOUT;
             }
         }
     }
@@ -102,7 +113,7 @@ void DVProImp::send_DV(unsigned short port_id, unsigned short dest_id) {
         unsigned short cost = cost_hop.first;
         unsigned short hop = cost_hop.second;
         // Poison reverse
-        if (dest_id == hop) {
+        if (dest_id == hop && node_id != dest_id) {
             cost = INFINITY_COST;
         }
         *(unsigned short *) (dv_packet + 8 + i * 4) = (unsigned short) htons(node_id);
@@ -112,8 +123,8 @@ void DVProImp::send_DV(unsigned short port_id, unsigned short dest_id) {
     sys->send(port_id, dv_packet, size);
 }
 
-void DVProImp ::update(unsigned short id, unsigned short RTT) {
-
+void DVProImp ::update(unsigned short id, unsigned short RTT, unsigned short oldRTT) {
+    bool upadte = false;
     if (routing_table->count(id) == 0) {
         (*routing_table)[id] = make_pair(RTT,id);
         DV_time[id] = sys->time() +DV_LS_TIMEOUT;
@@ -122,21 +133,51 @@ void DVProImp ::update(unsigned short id, unsigned short RTT) {
         if (nextHop == id) {
             (*routing_table)[id].first = RTT;
             DV_time[id] = sys->time() +DV_LS_TIMEOUT;
+            upadte = true;
         }else if (RTT < (*routing_table)[id].first) {
             (*routing_table)[id].first = RTT;
             (*routing_table)[id].second = id;
             DV_time[id] = sys->time() +DV_LS_TIMEOUT;
+            upadte = true;
         }
     }
+
+    if (upadte) {
+        unsigned short difference = RTT - oldRTT;
+        for (auto rEntry : *routing_table) {
+            if (rEntry.second.second == id) {
+                (*routing_table)[rEntry.first].first += difference;
+                DV_time[rEntry.first] = sys->time() + DV_LS_TIMEOUT;
+            }
+            if ((*neighbor_table).count(rEntry.first) != 0) {
+                if (get<0>((*neighbor_table)[rEntry.first]) < (*routing_table)[rEntry.first].first) {
+                    (*routing_table)[rEntry.first].first = get<0>((*neighbor_table)[rEntry.first]);
+                    (*routing_table)[rEntry.first].second = rEntry.first;
+                }
+            }
+        }
+    }
+
+
 }
 
 bool DVProImp ::refresh() {
     for (auto DvEntry = DV_time.begin(); DvEntry != DV_time.end(); ) {
         auto nextD = next(DvEntry);
         auto it_in_routing_table = routing_table->find(DvEntry->first);
+        if (DvEntry->first == it_in_routing_table->second.second) {
+            DV_time[DvEntry->first] = sys->time() + DV_LS_TIMEOUT;
+        }
         if (sys->time() >= DvEntry->second) {
-            routing_table->erase(it_in_routing_table);
-            DV_time.erase(DvEntry);
+            if ((*neighbor_table).count(DvEntry->first) != 0) {
+                (*routing_table)[DvEntry->first].first = get<0>((*neighbor_table)[DvEntry->first]);
+                (*routing_table)[DvEntry->first].second = DvEntry->first;
+                DV_time[DvEntry->first] = sys->time() + DV_LS_TIMEOUT;
+            }else {
+                routing_table->erase(it_in_routing_table);
+                DV_time.erase(DvEntry->first);
+
+            }
             IsUpdated = false;
         }
         DvEntry = nextD;
@@ -146,4 +187,26 @@ bool DVProImp ::refresh() {
         IsUpdated = true;
     }
     return IsUpdated;
+}
+
+void DVProImp ::earseDV(set<unsigned short> &toEarse) {
+    vector<unsigned short >id;
+    for (auto rEntry : *routing_table) {
+        if (toEarse.find(rEntry.second.second) != toEarse.end()) {
+
+            id.push_back(rEntry.first);
+            IsUpdated = false;
+        }
+    }
+    for (auto node : id) {
+        if (neighbor_table->count(node) != 0) {
+            (*routing_table)[node].first = get<0>((*neighbor_table)[node]);
+            (*routing_table)[node].second = node;
+            DV_time[node] = sys->time() + DV_LS_TIMEOUT;
+        }else {
+            routing_table->erase(node);
+            DV_time.erase(node);
+        }
+
+    }
 }
