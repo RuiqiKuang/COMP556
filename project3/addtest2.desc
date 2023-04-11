@@ -1,0 +1,9 @@
+Five nodes sending data packets at periodic intervals to each other.
+
+Tests whether
+
+1) triggered updates are sent for both distance vector and link state
+2) poison reverse DV variant is being handled
+3) ping and pong packets are being sent,
+4) periodic updates are being sent
+5) data packets are being sent

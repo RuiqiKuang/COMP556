@@ -146,7 +146,7 @@ void RoutingProtocolImpl::del_node(unsigned short node_id) {
 }
 
 void RoutingProtocolImpl::add_edge(unsigned short u, unsigned short v, unsigned short weight) {
-    cout << "add_edge " << u << " " << v << " " << weight << " " << sys->time() + DV_LS_TIMEOUT << endl;
+//     cout << "add_edge " << u << " " << v << " " << weight << " " << sys->time() + DV_LS_TIMEOUT << endl;
     graph[u][v] = make_pair(weight, sys->time() + DV_LS_TIMEOUT);
     graph[v][u] = make_pair(weight, sys->time() + DV_LS_TIMEOUT);
 }
