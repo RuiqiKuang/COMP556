@@ -1,16 +1,33 @@
 We tested our code through multiple test cases for both DV and LS protocols.
 
-Except for the simpletest 1 & 2 provided as default test cases, we designed our own test csses.
+Except for the simpletest 1 & 2 provided as default test cases, we designed our own test cases.
 
 
 (1) addtest1
 
 In addtest1, we test if our code can handle poison reverse before and after changedelay
 
+We have a graph with three nodes 1, 2 and 3.
+We set the delay between node 2 and 3 a much higher value,
+and we set message passing between node 2 and 3 to see if our code can work properly.
+In time 100.00, we change the delay between node 1 and 2 so that the cost from node 1 to 2 is higher than from 1 to 3
+and then to 2. We also set message passing between 1 and 2 to see if our code can update and handel the situation.
+
 (2) addtest2
 
-In addtest2, we test if our code can handle poison reverse with linkdying and linkcomingup
+In addtest2, we had an additional test if our code can handle poison reverse with linkdying and linkcomingup
+
+We have a graph with five nodes.
+We set one link to be of much higher delay, and send message from node 1 to 4 to see if our algorithm can find the right
+path. We also set linkdying and linkcomingup to see if our algorithm can update properly.
 
 (3) addtest3
 
 In addtest3, we used a slightly large graph to test Dijkstra’s algorithm
+
+We have a slightly large graph with 10 nodes.
+We set some links to be of much higher delay, and send many message between nodes to see if our algorithm can deal with
+large graph and find the right path. We also set linkdying and linkcomingup to see if our algorithm can update properly.
+
+
+The output files of our test is in the output directory. 
